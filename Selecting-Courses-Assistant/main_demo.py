@@ -39,7 +39,7 @@ def deal_with_command(str):
 
 if __name__ == '__main__':
     while True:
-        str = [x for x in input(prompt_words).split()]
+        str = list(input(prompt_words).split())
         if str[0] == '7':
             exit(0)
         deal_with_command(str)

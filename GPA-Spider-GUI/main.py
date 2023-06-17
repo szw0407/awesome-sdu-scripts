@@ -53,8 +53,7 @@ class mywindow(QMainWindow, Ui_MainWindow):
             QMessageBox.information(self, "程序提醒您：", "请先登录！")
             return
         self.scores = GPA_spider.get_scores()
-        index = 0
-        for score in self.scores:
+        for index, score in enumerate(self.scores):
             self.model.setItem(index, 0, QtGui.QStandardItem(score["学年学期"]))
             self.model.setItem(index, 1, QtGui.QStandardItem(score["课程名"]))
             self.model.setItem(index, 2, QtGui.QStandardItem(score["课程属性"]))
@@ -64,17 +63,17 @@ class mywindow(QMainWindow, Ui_MainWindow):
             self.model.setItem(index, 6, QtGui.QStandardItem(score["绩点"]))
             self.model.setItem(index, 7, QtGui.QStandardItem(str(score["期末成绩"])))
             self.model.setItem(index, 8, QtGui.QStandardItem(str(score["平时成绩"])))
-            index += 1
         self.Button_getscores.setEnabled(True)
         self.Button_calGPA.setEnabled(True)
 
     def calGPA(self):
         self.Button_calGPA.setEnabled(False)
-        xnxq = self.model.data(self.model.index(0, 0))
-        if xnxq:
+        if xnxq := self.model.data(self.model.index(0, 0)):
             str, OKevent = QInputDialog.getText(self, "程序提醒您：", "请输入要计算绩点的学年学期（完全匹配）：:", QLineEdit.Normal, xnxq)
             if OKevent and str.strip():
-                self.label_GPA.setText(str.strip() + "_GPA：" + GPA_spider.cal_GPA(self.scores, str.strip()))
+                self.label_GPA.setText(
+                    f"{str.strip()}_GPA：{GPA_spider.cal_GPA(self.scores, str.strip())}"
+                )
         self.Button_calGPA.setEnabled(True)
 
     def init_tablescores(self):
