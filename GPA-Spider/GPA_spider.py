@@ -18,7 +18,7 @@ def login(username, password):
     """登录，返回一个response"""
     try:
         JSESSIONID = uniform_login_spider.login(username, password, 'http://bkjws.sdu.edu.cn/f/j_spring_security_thauth_roaming_entry')
-        config.HEADERS["Cookie"] = "JSESSIONID=" + JSESSIONID
+        config.HEADERS["Cookie"] = f"JSESSIONID={JSESSIONID}"
         return '"success"'
     except Exception as e:
         print(e)
@@ -28,17 +28,16 @@ def get_profile():
     """获得使用者姓名"""
     try:
         response = requests.post('http://bkjws.sdu.edu.cn/b/grxx/xs/xjxx/detail', headers=config.HEADERS)
-        if response.status_code == 200 and '"success"' in response.text:
-            profile_json = json.loads(response.text)["object"]
-            return {
-                "姓名": profile_json["xm"],
-                "学院": profile_json['xsm'],
-                "专业名": profile_json['zym'],
-                "班名": profile_json["bm"],
-                "入学日期": profile_json['rxrq']
-            }
-        else:
+        if response.status_code != 200 or '"success"' not in response.text:
             return None
+        profile_json = json.loads(response.text)["object"]
+        return {
+            "姓名": profile_json["xm"],
+            "学院": profile_json['xsm'],
+            "专业名": profile_json['zym'],
+            "班名": profile_json["bm"],
+            "入学日期": profile_json['rxrq']
+        }
     except RequestException:
         return None
 
@@ -88,11 +87,8 @@ def parse_json(score_json):
 def get_scores():
     score_now_json = get_now_score()
     score_past_json = get_past_score()
-    scores = []
-    for score in parse_json(score_now_json):
-        scores.append(score)
-    for score in parse_json(score_past_json):
-        scores.append(score)
+    scores = list(parse_json(score_now_json))
+    scores.extend(iter(parse_json(score_past_json)))
     max_xnxq = None
     for score in scores:
         if score['学年学期'] != '空' and (not max_xnxq or config.compare_xnxq(score['学年学期'], max_xnxq)):
@@ -109,10 +105,7 @@ def Align(string, length=0):
         return string
     slen = len(string)
     re = string
-    if isinstance(string, str):
-        placeholder = ' '
-    else:
-        placeholder = u'　'
+    placeholder = ' ' if isinstance(string, str) else u'　'
     while slen < length:
         re += placeholder
         slen += 1
@@ -127,14 +120,55 @@ def show_scores(scores):
         if len(score["课程名"]) > maxLen:
             maxLen = len(score["课程名"])
     # 输出表头
-    print("| 学年学期  |" + config.Align_CHstr("课程名", "^" + str(maxLen)) + "|课程属性|" + "学分|" +
-          "最终成绩|" + "评分|" + "绩点|" + "期末成绩|" + "平时成绩|")
+    print(
+        (
+            (
+                (
+                    (
+                        (
+                            "| 学年学期  |"
+                            + config.Align_CHstr("课程名", f"^{str(maxLen)}")
+                            + "|课程属性|"
+                            + "学分|"
+                            + "最终成绩|"
+                        )
+                        + "评分|"
+                    )
+                    + "绩点|"
+                )
+                + "期末成绩|"
+            )
+            + "平时成绩|"
+        )
+    )
     # 输出表单
     for score in scores:
-        print(format(score["学年学期"], "<13") + config.Align_CHstr(score["课程名"], "<" + str(maxLen)) + " " +
-              format(score["课程属性"], "^4") + " " + format(score["学分"], "<3") + "   " +
-              format(str(score["最终成绩"]), "<3") + "   " + format(str(score["评分"]), "<2") + "  " +
-              format(str(score["绩点"]), "^4")) # + "  " + format(str(score["期末成绩"]), "^5") + " " +
+        print(
+            (
+                (
+                    (
+                        (
+                            (
+                                format(score["学年学期"], "<13")
+                                + config.Align_CHstr(
+                                    score["课程名"], f"<{str(maxLen)}"
+                                )
+                                + " "
+                                + format(score["课程属性"], "^4")
+                            )
+                            + " "
+                        )
+                        + format(score["学分"], "<3")
+                        + "   "
+                    )
+                    + format(str(score["最终成绩"]), "<3")
+                    + "   "
+                )
+                + format(str(score["评分"]), "<2")
+                + "  "
+            )
+            + format(str(score["绩点"]), "^4")
+        )
              # format(str(score["平时成绩"]), "^7"))
 
 
@@ -147,10 +181,7 @@ def cal_GPA(scores, xnxq):
             print(score)
             sum_credits += float(score["学分"])
             GPA += float(score["学分"]) * float(score["绩点"])
-    if sum_credits != 0:
-        return GPA / sum_credits
-    else:
-        return 0.0
+    return GPA / sum_credits if sum_credits != 0 else 0.0
 
 
 def main():

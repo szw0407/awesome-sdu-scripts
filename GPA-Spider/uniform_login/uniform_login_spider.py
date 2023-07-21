@@ -12,9 +12,9 @@ from . import uniform_login_des
 # example: login(username='your-student-id', password='your-password', to_url='https://scenter.sdu.edu.cn/tp_fp/view')
 def login(username, password, to_url):
     """登录并返回JSESSIONID"""
-    url = 'https://pass.sdu.edu.cn/cas/login?service=' + to_url
+    url = f'https://pass.sdu.edu.cn/cas/login?service={to_url}'
     lt, execution, _eventId, JSESSIONID = getLoginCasData(url)
-    HEADERS_LOGIN["Cookie"] = "JSESSIONID=" + JSESSIONID
+    HEADERS_LOGIN["Cookie"] = f"JSESSIONID={JSESSIONID}"
     rsa = uniform_login_des.strEnc(username + password + lt, '1', '2', '3')
     data = dict(
         rsa=rsa,
