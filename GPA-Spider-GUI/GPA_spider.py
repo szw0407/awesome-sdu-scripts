@@ -16,25 +16,22 @@ def set_Cookie():
     """统一程序中发送requests请求的所有cookie，即加到headers里面"""
     try:
         response = requests.get('http://bkjwxk.sdu.edu.cn/f/common/main')
-        if response.status_code == 200:
-            config.JSESSIONID = response.request._cookies._cookies
-            config.JSESSIONID = str(config.JSESSIONID['bkjwxk.sdu.edu.cn']['/']['JSESSIONID'])[19:40]
-            config.HEADERS["Cookie"] = "JSESSIONID=" + config.JSESSIONID
-            return True
-        else:
+        if response.status_code != 200:
             return False
+        config.JSESSIONID = response.request._cookies._cookies
+        config.JSESSIONID = str(config.JSESSIONID['bkjwxk.sdu.edu.cn']['/']['JSESSIONID'])[19:40]
+        config.HEADERS["Cookie"] = f"JSESSIONID={config.JSESSIONID}"
+        return True
     except RequestException:
         return False
 
 
 def login(username, password):
     """登录，返回一个response"""
-    data = "j_username=" + username + "&j_password=" + generateMD5(password)
+    data = f"j_username={username}&j_password={generateMD5(password)}"
     try:
         response = requests.post('http://bkjws.sdu.edu.cn/b/ajaxLogin', data=data, headers=config.HEADERS)
-        if response.status_code == 200:
-            return response.text
-        return None
+        return response.text if response.status_code == 200 else None
     except RequestException:
         return None
 
@@ -43,17 +40,16 @@ def get_profile():
     """获得使用者姓名"""
     try:
         response = requests.post('http://bkjws.sdu.edu.cn/b/grxx/xs/xjxx/detail', headers=config.HEADERS)
-        if response.status_code == 200 and '"success"' in response.text:
-            profile_json = json.loads(response.text)["object"]
-            return {
-                "姓名": profile_json["xm"],
-                "学院": profile_json['xsm'],
-                "专业名": profile_json['zym'],
-                "班名": profile_json["bm"],
-                "入学日期": profile_json['rxrq']
-            }
-        else:
+        if response.status_code != 200 or '"success"' not in response.text:
             return None
+        profile_json = json.loads(response.text)["object"]
+        return {
+            "姓名": profile_json["xm"],
+            "学院": profile_json['xsm'],
+            "专业名": profile_json['zym'],
+            "班名": profile_json["bm"],
+            "入学日期": profile_json['rxrq']
+        }
     except RequestException:
         return None
 
@@ -101,11 +97,8 @@ def parse_json(score_json):
 def get_scores():
     score_now_json = get_now_score()
     score_past_json = get_past_score()
-    scores = []
-    for score in parse_json(score_now_json):
-        scores.append(score)
-    for score in parse_json(score_past_json):
-        scores.append(score)
+    scores = list(parse_json(score_now_json))
+    scores.extend(iter(parse_json(score_past_json)))
     scores.sort(key=lambda x: x['学分'], reverse=True)
     return scores
 
@@ -117,7 +110,4 @@ def cal_GPA(scores, xnxq):
         if score["学年学期"] == xnxq:
             sum_credits += float(score["学分"])
             GPA += float(score["学分"]) * float(score["绩点"])
-    if sum_credits != 0:
-        return str(GPA / sum_credits)
-    else:
-        return '0.0'
+    return str(GPA / sum_credits) if sum_credits != 0 else '0.0'
